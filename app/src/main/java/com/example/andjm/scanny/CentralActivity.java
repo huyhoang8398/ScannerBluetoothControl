@@ -7,6 +7,7 @@ import android.content.DialogInterface;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.media.Image;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
@@ -38,6 +39,7 @@ import android.widget.Toast;
 
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
@@ -80,6 +82,7 @@ public class CentralActivity extends AppCompatActivity {
     private boolean isTransferList = false;
     private String[] piImageList;
     private String bufFileName;
+    private TextView info_time, info_img_JPG, info_img_PNG, info_storage, info_dpi, info_crontab;
 
 
     @Override
@@ -102,10 +105,41 @@ public class CentralActivity extends AppCompatActivity {
         mDrawerLayout     = findViewById(R.id.drawer_layout);
         content_layout    = findViewById(R.id.content_layout);
         checking_board    = findViewById(R.id.noti_view);
-        imageView         = findViewById(R.id.imageView);
+        //imageView         = findViewById(R.id.imageView);
         scroll_container  = findViewById(R.id.scrollable_container);
         mBluetoothAdapter = BluetoothAdapter.getDefaultAdapter();
         sysinfo_container = findViewById(R.id.sysinfo_container);
+
+        info_crontab      = findViewById(R.id.info_crontab);
+        info_dpi          = findViewById(R.id.info_dpi);
+        info_img_JPG      = findViewById(R.id.info_img_JPG);
+        info_img_PNG      = findViewById(R.id.info_img_PNG);
+        info_storage      = findViewById(R.id.info_storage);
+        info_time         = findViewById(R.id.info_time);
+
+        sysinfo_container.removeAllViews();
+        ImageView imageView = new ImageView(getApplicationContext());
+        ViewGroup.LayoutParams lp = new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        String path = Environment.getExternalStorageDirectory() + "";
+
+        // ---------- TRY TO READ IMAGE FROM BINARY ---------- //
+        /*InputStream inputStream = getResources().openRawResource(R.raw.binaryImage);
+        BufferedReader bufferedReader= new BufferedReader(new InputStreamReader(inputStream));
+        String eachline = null;
+        try {
+            eachline = bufferedReader.readLine();
+            while (eachline != null) {
+                // `the words in the file are separated by space`, so to get each words
+                String[] words = eachline.split(" ");
+                eachline = bufferedReader.readLine();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        }*/
+
+
+
+
 
         if(isAdmin) noti_view.setText("You are ADMIN");
         else noti_view.setText("You are GUESS");
@@ -143,8 +177,8 @@ public class CentralActivity extends AppCompatActivity {
 
                             case(R.id.nav_files):
                                 if(isConnected){
-                                    sendMessage(REQUEST_BROWSE_FILE); // send message to ask Pi send back the file list
-
+                                    //sendMessage(REQUEST_BROWSE_FILE); // send message to ask Pi send back the file list
+                                    sendMessage("browsefile");
                                     Bundle b = new Bundle();
                                     // piImageList is changed in handleMessage();
                                     b.putStringArray("imagelist", piImageList);
@@ -358,58 +392,50 @@ public class CentralActivity extends AppCompatActivity {
                                 String joinedMessage = String.join(" ", list);
                                 TextView inMessage = new TextView(CentralActivity.this);
                                 inMessage.setText(mConnectedDeviceName + ": \n" + joinedMessage + "\n");
-                                sysinfo_container.addView(inMessage);
-                                checking_board.setText("image is being displayed!");
+
+                                String lines[] = joinedMessage.split("\\r?\\n");
+                                info_time.setText(lines[0]);
+                                info_img_JPG.setText(lines[1]);
+                                info_img_PNG.setText(lines[2]);
+                                info_storage.setText(lines[3]);
+                                info_dpi.setText(lines[4]);
+                                info_crontab.setText(lines[5]);
+
+                                sysinfo_container.addView(info_time);
+                                sysinfo_container.addView(info_img_JPG);
+                                sysinfo_container.addView(info_img_PNG);
+                                sysinfo_container.addView(info_storage);
+                                sysinfo_container.addView(info_dpi);
+                                sysinfo_container.addView(info_crontab);
+
+                                //sysinfo_container.addView(inMessage);
+                                checking_board.setText("Information:");
                                 break;
                         }
-                    /*if(!splitted[0].equals("filelist")){
-                        TextView inMessage = new TextView(CentralActivity.this);
-                        inMessage.setText(mConnectedDeviceName +": \n" + readMessage+"\n");
-                        scroll_container.removeAllViews();
-                        scroll_container.addView(inMessage);
 
                     }else{
-                        piImageList = splitted;
 
-
-                    }*/
-                    }else{
-
-
-                        /*if(!bufFileName.equals("")) writeFileOnInternalStorage(CentralActivity.this,bufFileName,readMessage);
-
-                        Context ctx = CentralActivity.this ;
-                        try {
-                            checking_board.setText("lineData: bo m kho chiu lam roi");
-                            FileInputStream fileInputStream = ctx.openFileInput(bufFileName);
-                            InputStreamReader inputStreamReader = new InputStreamReader(fileInputStream);
-                            BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
-                            String lineData = bufferedReader.readLine();
-                            byte[] bt = lineData.getBytes();
-                            Bitmap img = BitmapFactory.decodeByteArray(bt, 0, bt.length);
-
-                            sysinfo_container.addView(imageView);
-                            sysinfo_container.addView(noti_view);
-                            noti_view.setText(lineData);
-                            imageView.setImageBitmap(img);
-                            checking_board.setText("lineData: "+lineData);
-                            Toast.makeText(CentralActivity.this,"stored: "+lineData, Toast.LENGTH_SHORT).show();
-
-                        } catch (FileNotFoundException e) {
-                            e.printStackTrace();
-                        } catch (IOException e) {
-                            e.printStackTrace();
-                        }*/
                         sysinfo_container.removeAllViews();
-                        checking_board.setText(readBuf.toString());
-                        sysinfo_container.addView(imageView);
-                        Bitmap img = BitmapFactory.decodeByteArray(readBuf, 0, readBuf.length);
+                        //checking_board.setText(Integer.toString(readBuf.length));
+                        //String binaryImage = readBuf.toString().split("'")[1];
+                        System.out.print(readBuf);
 
-                        imageView.setImageBitmap(img);
-                        TextView imgByte = new TextView(CentralActivity.this);
+                        //--------added------//
+                        Bitmap bmp = BitmapFactory.decodeResource(getResources(), R.drawable.radar);
+                        ByteArrayOutputStream stream = new ByteArrayOutputStream();
+                        bmp.compress(Bitmap.CompressFormat.JPEG, 100, stream);
+                        byte[] byteArray = stream.toByteArray();
+                        checking_board.setText(readBuf.toString());
+
+                        ImageView imgByte = new ImageView(CentralActivity.this);
                         sysinfo_container.addView(imgByte);
-                        imgByte.append(readMessage);
-                        Toast.makeText(CentralActivity.this,"stored: ", Toast.LENGTH_SHORT).show();
+                        Bitmap img = BitmapFactory.decodeByteArray(readBuf, 0, readBuf.length);
+                        imgByte.setImageBitmap(img);
+
+                        //imgByte.append(readMessage);
+                        Toast.makeText(CentralActivity.this,"image transfered: ", Toast.LENGTH_SHORT).show();
+
+
 
                     }
                     break;

@@ -163,14 +163,16 @@ public class CrontabFragment extends DialogFragment {
                         DatePicker datePicker = dialogview.findViewById(R.id.date_picker);
                         TimePicker timePicker = dialogview.findViewById(R.id.time_picker);
 
+
                             Calendar calendar = new GregorianCalendar(datePicker.getYear(),
                                     datePicker.getMonth(),
                                     datePicker.getDayOfMonth(),
                                     timePicker.getHour(),
                                     timePicker.getMinute());
 
+
                             Long time = calendar.getTimeInMillis();
-                            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd-hh-mm");
+                            SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd-hh-mm-a");
                             alertDialog.dismiss();
                             textTime.setText(sdf.format(time));
                     }
@@ -181,12 +183,14 @@ public class CrontabFragment extends DialogFragment {
         });
 
         changeTime.setOnClickListener(new View.OnClickListener() {
+            @RequiresApi(api = Build.VERSION_CODES.O)
             @Override
             public void onClick(View view) {
                 String update_time = textTime.getText().toString();
                 if (update_time.equals(""))
                 Toast.makeText(getActivity(), "Pick a time please!", Toast.LENGTH_SHORT).show();
                 else {
+                    update_time = changeTimeTo24h(update_time);
                     ((CentralActivity) getActivity()).sendMessage("Time " + update_time);
                     noti_changed_TIME.setText("Time updated to " + update_time);
                     textTime.setText("");
@@ -198,6 +202,27 @@ public class CrontabFragment extends DialogFragment {
     private boolean checkRangeDPI(int value){
         if(100 <= value && value <= 500) return true;
         return false;
+    }
+
+    @RequiresApi(api = Build.VERSION_CODES.O)
+    private String changeTimeTo24h(String time){
+        String[] time_component;
+        time_component = time.split("-");
+
+
+        if (time_component[time_component.length-1].equals("PM")){
+            int temp = Integer.parseInt(time_component[time_component.length-3]) ;
+            temp += 12;
+            String string_temp = String.valueOf(temp);
+            time_component[time_component.length-3] = string_temp;
+        }
+
+        String[] raw_time = new String[time_component.length-1];
+        for(int i=0;i < raw_time.length-1;i++){
+            raw_time[i] = time_component[i];
+        }
+        String final_time = String.join("-",raw_time);
+        return final_time;
     }
 
 

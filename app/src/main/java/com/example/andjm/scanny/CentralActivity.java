@@ -1,19 +1,24 @@
 package com.example.andjm.scanny;
 
+import android.Manifest;
 import android.bluetooth.BluetoothAdapter;
 import android.bluetooth.BluetoothDevice;
 import android.content.Context;
+import android.content.ContextWrapper;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.media.Image;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Environment;
 import android.os.Handler;
 import android.os.Message;
 import android.support.annotation.RequiresApi;
 import android.support.design.widget.NavigationView;
+import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentManager;
 import android.support.v4.app.FragmentTransaction;
 import android.support.v4.view.GravityCompat;
@@ -24,6 +29,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.text.InputType;
+import android.util.Base64;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.MenuItem;
@@ -37,12 +43,17 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.squareup.picasso.Picasso;
+
+import org.w3c.dom.Text;
+
 import java.io.BufferedReader;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
 import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
@@ -83,7 +94,12 @@ public class CentralActivity extends AppCompatActivity {
     private String[] piImageList;
     private String bufFileName;
     private TextView info_time, info_img_JPG, info_img_PNG, info_storage, info_dpi, info_crontab;
-
+    private final String imageText = "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                      ";
+    private static final int REQUEST_EXTERNAL_STORAGE = 1;
+    private static String[] PERMISSIONS_STORAGE = {
+            Manifest.permission.READ_EXTERNAL_STORAGE,
+            Manifest.permission.WRITE_EXTERNAL_STORAGE
+    };
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -138,7 +154,7 @@ public class CentralActivity extends AppCompatActivity {
         }*/
 
 
-
+        isStoragePermissionGranted();
 
 
         if(isAdmin) noti_view.setText("You are ADMIN");
@@ -219,6 +235,8 @@ public class CentralActivity extends AppCompatActivity {
         } else if (mChatService == null) {
             setupChat();
         }
+
+        //sysinfo_container.removeAllViews();
     }
 
     @Override
@@ -235,7 +253,6 @@ public class CentralActivity extends AppCompatActivity {
             }
         }
     }
-
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
@@ -306,6 +323,23 @@ public class CentralActivity extends AppCompatActivity {
         sysinfo_container.removeAllViews();
         String command = "checkinfo_123456";
         sendMessage(command);
+
+        //Bitmap bm = BitmapFactory.decodeResource(getResources(), R.raw.white);
+        //ByteArrayOutputStream baos = new ByteArrayOutputStream();
+        //bm.compress(Bitmap.CompressFormat.JPEG, 100,baos); //bm is the bitmap object
+        //byte[] b = baos.toByteArray();
+        //Toast.makeText(getBaseContext(), String.valueOf(b.length), Toast.LENGTH_SHORT).show();
+        //mChatService.write(b);
+
+        //sysinfo_container.removeAllViews();
+        //byte[] decodedString = Base64.decode(imageText,Base64.DEFAULT);
+        //Bitmap decodedByte = BitmapFactory.decodeByteArray(decodedString, 0, decodedString.length);
+
+
+        //ImageView imgByte = new ImageView(CentralActivity.this);
+        //sysinfo_container.addView(imgByte);
+        //imgByte.setImageBitmap(decodedByte);
+
     }
 
     public void crontabButtonPressed(View view){
@@ -321,23 +355,26 @@ public class CentralActivity extends AppCompatActivity {
         crontabFragment.show(fragmentManager, null);
     }
 
-    public void writeFileOnInternalStorage(Context mcoContext, String sFileName, String sBody){
-        File file = new File(mcoContext.getFilesDir(),"magicscan");
-        if(!file.exists()){
-            file.mkdir();
+    public  boolean isStoragePermissionGranted() {
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (checkSelfPermission(android.Manifest.permission.READ_EXTERNAL_STORAGE)
+                    == PackageManager.PERMISSION_GRANTED) {
+                Log.v(TAG,"Permission is granted");
+                return true;
+            } else {
+
+                Log.v(TAG,"Permission is revoked");
+                ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
+                return false;
+            }
         }
-
-        try{
-            File gpxfile = new File(file, sFileName);
-            FileWriter writer = new FileWriter(gpxfile);
-            writer.append(sBody);
-            writer.flush();
-            writer.close();
-
-        } catch (IOException e) {
-            e.printStackTrace();
+        else { //permission is automatically granted on sdk<23 upon installation
+            Log.v(TAG,"Permission is granted");
+            return true;
         }
     }
+
+
 
     private final Handler mHandler = new Handler() {
         @RequiresApi(api = Build.VERSION_CODES.O)
@@ -375,6 +412,8 @@ public class CentralActivity extends AppCompatActivity {
                     byte[] readBuf = (byte[]) msg.obj;
                     // construct a string from the valid bytes in the buffer
                     String readMessage = new String(readBuf, 0, msg.arg1);
+                    //readMessage = readMessage.split("'")[1];
+
                     String[] splitted  = readMessage.split(" ");
                     if (splitted.length > 1) {
                         String[] newList = new String[splitted.length - 1];
@@ -414,26 +453,22 @@ public class CentralActivity extends AppCompatActivity {
                         }
 
                     }else{
-
+                        //bufFileName
                         sysinfo_container.removeAllViews();
-                        //checking_board.setText(Integer.toString(readBuf.length));
-                        //String binaryImage = readBuf.toString().split("'")[1];
-                        System.out.print(readBuf);
-
-                        //--------added------//
-                        Bitmap bmp = BitmapFactory.decodeResource(getResources(), R.drawable.radar);
-                        ByteArrayOutputStream stream = new ByteArrayOutputStream();
-                        bmp.compress(Bitmap.CompressFormat.JPEG, 100, stream);
-                        byte[] byteArray = stream.toByteArray();
-                        checking_board.setText(readBuf.toString());
-
-                        ImageView imgByte = new ImageView(CentralActivity.this);
-                        sysinfo_container.addView(imgByte);
-                        Bitmap img = BitmapFactory.decodeByteArray(readBuf, 0, readBuf.length);
-                        imgByte.setImageBitmap(img);
-
-                        //imgByte.append(readMessage);
-                        Toast.makeText(CentralActivity.this,"image transfered: ", Toast.LENGTH_SHORT).show();
+                        updateStatus("Size of image transferred: "+Integer.toString(readBuf.length));
+                        ImageView imgView = new ImageView(CentralActivity.this);
+                        sysinfo_container.addView(imgView);
+                        String filePath = "/storage/emulated/0/bluetooth/"+bufFileName;
+                        updateStatus("file transferred: "+filePath);
+                        File imgFile = new File(filePath);
+                        //Bitmap bmp = BitmapFactory.decodeFile(filePath);
+                        //imgView.setImageBitmap(bmp);
+                        if( isStoragePermissionGranted())
+                        {
+                            Bitmap myBitmap = BitmapFactory.decodeFile(imgFile.getAbsolutePath());
+                            imgView.setImageBitmap(myBitmap);
+                            updateStatus("file exists");
+                        }else updateStatus("file doesnt not exist!!");
 
 
 
